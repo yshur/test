@@ -4,33 +4,35 @@ ini_set('display_errors', 'On');
 error_reporting(E_ALL | E_STRICT);
 date_default_timezone_set('Asia/Jerusalem');
 //initialization const
-global $alert_test;
-$alert_test = false;
+$alert_test = 0;
 $fileName = '/home/ec2-user/test/tests.log';
 $newJson = test();
 $time = date("m-d-Y H:i:s");
 $outArray = array ('DATE'=>$time,'results'=>$newJson);	
 file_put_contents ($fileName, json_encode($outArray)."\n",FILE_APPEND | LOCK_EX);
-if($alert_test)
+if($alert_test > 0) 
 	sendEmail(json_encode($outArray));
-echo json_encode($outArray);
+//echo json_encode($outArray);
 //print_r ($newJson);
 //end of the script
 
 function test_ec2($checkName, $testCommand) {
         $line = "";
-        $alert = false;
+	$alert = false;
+	global $alert_test;
         exec($testCommand, $result);
         $line = preg_replace('/\s+/', ' ', trim($result[4]));//replace multi white space with one
         $output = explode(" ", $line); //split the line
         $result = "tries: $output[2], Err: $output[14] $output[15], Avg: $output[8], Min: $output[10], Max: $output[12]";
-        if((intval($output[14]) > 0) || (intval($output[8]) > 1500))
+        if((intval($output[14]) > 0) || (intval($output[8]) > 1500))  {
                 $alert = true;
+		$alert_test++;
+	}
         $outArray = array('CheckName'=>$checkName, 'Alerted'=>($alert)?'true':'false', 'result'=>$result);
         return $outArray;
 }
 
-function test(){
+function test() {
         $test_command = array("DNS1_1" => 'sudo /opt/jmeter/apache-jmeter-3.2/bin/jmeter -n -t /opt/jmeter/apache-jmeter-3.2/bin/NODE1_1.jmx -l /tmp/NODE1results.jtl',
 							"DNS2_1" => 'sudo /opt/jmeter/apache-jmeter-3.2/bin/jmeter -n -t /opt/jmeter/apache-jmeter-3.2/bin/NODE2_1.jmx -l /tmp/NODE2results.jtl',
 							"LOAD_BALANCER_1" => 'sudo /opt/jmeter/apache-jmeter-3.2/bin/jmeter -n -t /opt/jmeter/apache-jmeter-3.2/bin/LOAD_BALANCER_1.jmx -l /tmp/LBresults.jtl'
@@ -39,8 +41,6 @@ function test(){
         $i = 0;
         foreach($test_command as $checkName=>$cmd)   {
 			$result_array[$i] = test_ec2($checkName, $cmd);
-			if($result_array[$i]['Alerted'] == true)
-					$alert_test = true;
 			$i++;
 		}
         return $result_array;
@@ -51,8 +51,7 @@ function sendEmail($result_array)    {
 	$to="yair.shur@gmail.com";
 	$headers = 'From: testerAWS@aws.com' . "\r\n";
 	$subject = "ALERT: Problem with NODE servers";
-	$body = $result_array;
-	mail($to, $subject, $body, $headers);
+	mail($to, $subject, $result_array, $headers);
 }
 ?>
 

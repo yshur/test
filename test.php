@@ -24,6 +24,11 @@ function test_ec2($checkName, $testCommand) {
         $line = preg_replace('/\s+/', ' ', trim($result[4]));//replace multi white space with one
         $output = explode(" ", $line); //split the line
         $result = "tries: $output[2], Err: $output[14] $output[15], Avg: $output[8], Min: $output[10], Max: $output[12]";
+	exec("aws cloudwatch put-metric-data --metric-name error_$checkName --namespace $checkName --value $output[14]");
+	exec("aws cloudwatch put-metric-data --metric-name Average_$checkName --namespace $checkName --value $output[8]");
+	exec("aws cloudwatch put-metric-data --metric-name Min_$checkName --namespace $checkName --value $output[10]");
+	exec("aws cloudwatch put-metric-data --metric-name Max_$checkName --namespace $checkName --value $output[12]");
+	exec("aws cloudwatch put-metric-data --metric-name Tries_$checkName --namespace $checkName --value $output[2]");
         if((intval($output[14]) > 0) || (intval($output[8]) > 1500))  {
                 $alert = true;
 		$alert_test++;
@@ -33,9 +38,9 @@ function test_ec2($checkName, $testCommand) {
 }
 
 function test() {
-        $test_command = array("DNS1_1" => 'sudo /opt/jmeter/apache-jmeter-3.2/bin/jmeter -n -t /opt/jmeter/apache-jmeter-3.2/bin/NODE1_1.jmx -l /tmp/NODE1results.jtl',
-							"DNS2_1" => 'sudo /opt/jmeter/apache-jmeter-3.2/bin/jmeter -n -t /opt/jmeter/apache-jmeter-3.2/bin/NODE2_1.jmx -l /tmp/NODE2results.jtl',
-							"LOAD_BALANCER_1" => 'sudo /opt/jmeter/apache-jmeter-3.2/bin/jmeter -n -t /opt/jmeter/apache-jmeter-3.2/bin/LOAD_BALANCER_1.jmx -l /tmp/LBresults.jtl'
+        $test_command = array("DNS1" => 'sudo /opt/jmeter/apache-jmeter-3.2/bin/jmeter -n -t /opt/jmeter/apache-jmeter-3.2/bin/NODE1_1.jmx -l /tmp/NODE1results.jtl',
+			"DNS2" => 'sudo /opt/jmeter/apache-jmeter-3.2/bin/jmeter -n -t /opt/jmeter/apache-jmeter-3.2/bin/NODE2_1.jmx -l /tmp/NODE2results.jtl',
+			"LoadBalancer" => 'sudo /opt/jmeter/apache-jmeter-3.2/bin/jmeter -n -t /opt/jmeter/apache-jmeter-3.2/bin/LOAD_BALANCER_1.jmx -l /tmp/LBresults.jtl'
 					);
         $result_array = array();        
         $i = 0;
